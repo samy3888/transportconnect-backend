@@ -9,7 +9,7 @@ try {
 const { email, password } = req.body;
 
 let result = await pool.query('SELECT * FROM chauffeurs WHERE email = $1', [email]);
-let role = 'chauffeur';
+let role = null;
 
 if (result.rows.length === 0) {
 result = await pool.query('SELECT * FROM societes WHERE email = $1', [email]);

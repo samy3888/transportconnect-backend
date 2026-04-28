@@ -5,7 +5,6 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ authenticateToken EN HAUT avant tout
 function authenticateToken(req, res, next) {
 const authHeader = req.headers['authorization'];
 const token = authHeader && authHeader.split(' ')[1];
@@ -40,12 +39,21 @@ app.use('/api/gps', gpsRoutes);
 
 const pool = require('./db');
 
-// ✅ DROP TABLE RETIRÉ - juste ALTER pour ajouter patient_token
-pool.query(`
-ALTER TABLE trajets ADD COLUMN IF NOT EXISTS patient_token VARCHAR(50)
-`).then(() => console.log('Table trajets OK')).catch(e => console.log('Erreur alter:', e.message));
+// ✅ Colonnes automatiques
+pool.query(`ALTER TABLE trajets ADD COLUMN IF NOT EXISTS patient_token VARCHAR(50)`)
+.then(() => console.log('Colonne patient_token OK'))
+.catch(e => console.log('patient_token:', e.message));
 
-// ✅ GET trajets du chauffeur connecté
+pool.query(`ALTER TABLE societes ADD COLUMN IF NOT EXISTS actif BOOLEAN DEFAULT false`)
+.then(() => console.log('Colonne actif OK'))
+.catch(e => console.log('actif:', e.message));
+
+// ✅ Activer societe1 de test
+pool.query(`UPDATE societes SET actif = true WHERE email = 'societe1@test.fr'`)
+.then(() => console.log('societe1 activée'))
+.catch(e => console.log('update actif:', e.message));
+
+// GET trajets du chauffeur connecté
 app.get('/api/tours/chauffeur', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query(
@@ -58,7 +66,7 @@ res.status(500).json({ error: e.message });
 }
 });
 
-// ✅ PUT modifier un trajet
+// PUT modifier un trajet
 app.put('/api/tours/:id', authenticateToken, async (req, res) => {
 const { chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date } = req.body;
 try {
@@ -72,7 +80,7 @@ res.status(500).json({ error: e.message });
 }
 });
 
-// ✅ PUT status trajet chauffeur
+// PUT status trajet chauffeur
 app.put('/api/tours/:id/status', authenticateToken, async (req, res) => {
 const { status } = req.body;
 try {

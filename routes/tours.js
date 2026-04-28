@@ -16,11 +16,22 @@ res.status(500).json({ error: 'Erreur serveur' });
 router.get('/chauffeur/:id', async (req, res) => {
 try {
 const { id } = req.params;
-const result = await pool.query(
-'SELECT * FROM trajets WHERE chauffeur_id = $1 ORDER BY date DESC',
-[id]
-);
+const result = await pool.query('SELECT * FROM trajets WHERE chauffeur_id = $1 ORDER BY date DESC', [id]);
 res.json(result.rows);
+} catch (err) {
+res.status(500).json({ error: 'Erreur serveur' });
+}
+});
+
+// Créer un nouveau trajet
+router.post('/', async (req, res) => {
+try {
+const { chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, status } = req.body;
+const result = await pool.query(
+'INSERT INTO trajets (chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+[chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, status || 'en_attente']
+);
+res.json(result.rows[0]);
 } catch (err) {
 res.status(500).json({ error: 'Erreur serveur' });
 }
@@ -41,19 +52,6 @@ res.status(500).json({ error: 'Erreur serveur' });
 }
 });
 
-// Créer un nouveau trajet
-router.post('/', async (req, res) => {
-try {
-const { chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date } = req.body;
-const result = await pool.query(
-'INSERT INTO trajets (chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, statut) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-[chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, 'en_attente']
-);
-res.json(result.rows[0]);
-} catch (err) {
-res.status(500).json({ error: 'Erreur serveur' });
-}
-});
 // Supprimer un trajet
 router.delete('/:id', async (req, res) => {
 try {
@@ -64,4 +62,5 @@ res.json({ success: true });
 res.status(500).json({ error: 'Erreur serveur' });
 }
 });
+
 module.exports = router;

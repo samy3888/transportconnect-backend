@@ -27,7 +27,6 @@ return res.status(400).json({ error: 'Identifiants incorrects' });
 
 const user = result.rows[0];
 
-// Vérifier si compte société actif
 if (role === 'societe' && user.actif === false) {
 return res.status(403).json({ error: 'Compte non activé — contactez TransportConnect' });
 }
@@ -62,13 +61,14 @@ res.status(500).json({ error: 'Erreur serveur' });
 
 // INSCRIPTION SOCIETE
 router.post('/register-societe', async (req, res) => {
-const { nom, email, mot_de_passe, telephone } = req.body;
+const { nom, email, password, mot_de_passe, telephone } = req.body;
+const mdp = password || mot_de_passe;
 try {
 const exist = await pool.query('SELECT * FROM societes WHERE email = $1', [email]);
 if (exist.rows.length > 0) {
 return res.status(400).json({ error: 'Email déjà utilisé' });
 }
-const hash = await bcrypt.hash(mot_de_passe, 10);
+const hash = await bcrypt.hash(mdp, 10);
 const result = await pool.query(
 'INSERT INTO societes (nom, email, mot_de_passe, telephone, actif) VALUES ($1, $2, $3, $4, false) RETURNING *',
 [nom, email, hash, telephone]
@@ -82,13 +82,17 @@ res.status(500).json({ error: 'Erreur serveur' });
 
 // ✅ INSCRIPTION CHAUFFEUR avec societe_id
 router.post('/register-chauffeur', async (req, res) => {
-const { nom, email, mot_de_passe, telephone, societe_id } = req.body;
+const { nom, email, password, mot_de_passe, telephone, societe_id } = req.body;
+const mdp = password || mot_de_passe;
 try {
+if (!mdp) {
+return res.status(400).json({ error: 'Mot de passe requis' });
+}
 const exist = await pool.query('SELECT * FROM chauffeurs WHERE email = $1', [email]);
 if (exist.rows.length > 0) {
 return res.status(400).json({ error: 'Email déjà utilisé' });
 }
-const hash = await bcrypt.hash(mot_de_passe, 10);
+const hash = await bcrypt.hash(mdp, 10);
 const result = await pool.query(
 'INSERT INTO chauffeurs (nom, email, mot_de_passe, telephone, societe_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
 [nom, email, hash, telephone, societe_id]
@@ -107,8 +111,7 @@ const authHeader = req.headers['authorization'];
 const token = authHeader && authHeader.split(' ')[1];
 if (!token) return res.status(401).json({ error: 'Token manquant' });
 
-const jwt2 = require('jsonwebtoken');
-const decoded = jwt2.verify(token, process.env.JWT_SECRET || 'TransportConnect2024SecretKey!');
+const decoded = jwt.verify(token, process.env.JWT_SECRET || 'TransportConnect2024SecretKey!');
 
 const result = await pool.query(
 'SELECT id, nom, email, telephone, societe_id FROM chauffeurs WHERE societe_id = $1',

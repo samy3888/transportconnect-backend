@@ -54,5 +54,14 @@ res.json(result.rows[0]);
 res.status(500).json({ error: 'Erreur serveur' });
 }
 });
-
+// Supprimer un trajet
+router.delete('/:id', async (req, res) => {
+try {
+const { id } = req.params;
+await pool.query('DELETE FROM trajets WHERE id = $1', [id]);
+res.json({ success: true });
+} catch (err) {
+res.status(500).json({ error: 'Erreur serveur' });
+}
+});
 module.exports = router;

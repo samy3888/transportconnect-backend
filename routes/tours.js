@@ -8,7 +8,8 @@ try {
 const result = await pool.query('SELECT * FROM trajets ORDER BY date DESC');
 res.json(result.rows);
 } catch (err) {
-res.status(500).json({ error: 'Erreur serveur' });
+console.log(err);
+res.status(500).json({ error: err.message });
 }
 });
 
@@ -19,7 +20,8 @@ const { id } = req.params;
 const result = await pool.query('SELECT * FROM trajets WHERE chauffeur_id = $1 ORDER BY date DESC', [id]);
 res.json(result.rows);
 } catch (err) {
-res.status(500).json({ error: 'Erreur serveur' });
+console.log(err);
+res.status(500).json({ error: err.message });
 }
 });
 
@@ -33,7 +35,8 @@ const result = await pool.query(
 );
 res.json(result.rows[0]);
 } catch (err) {
-res.status(500).json({ error: 'Erreur serveur' });
+console.log(err);
+res.status(500).json({ error: err.message });
 }
 });
 
@@ -43,12 +46,13 @@ try {
 const { id } = req.params;
 const { status } = req.body;
 const result = await pool.query(
-'UPDATE trajets SET statut = $1 WHERE id = $2 RETURNING *',
+'UPDATE trajets SET status = $1 WHERE id = $2 RETURNING *',
 [status, id]
 );
 res.json(result.rows[0]);
 } catch (err) {
-res.status(500).json({ error: 'Erreur serveur' });
+console.log(err);
+res.status(500).json({ error: err.message });
 }
 });
 
@@ -59,7 +63,8 @@ const { id } = req.params;
 await pool.query('DELETE FROM trajets WHERE id = $1', [id]);
 res.json({ success: true });
 } catch (err) {
-res.status(500).json({ error: 'Erreur serveur' });
+console.log(err);
+res.status(500).json({ error: err.message });
 }
 });
 

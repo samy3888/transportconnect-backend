@@ -53,4 +53,11 @@ res.status(500).json({ error: 'Erreur serveur' });
 }
 });
 
-module.exports = router;
+router.get('/chauffeurs', async (req, res) => {
+try {
+const result = await pool.query('SELECT id, nom, email, telephone FROM chauffeurs');
+res.json(result.rows);
+} catch (err) {
+res.status(500).json({ error: 'Erreur serveur' });
+}
+});module.exports = router;

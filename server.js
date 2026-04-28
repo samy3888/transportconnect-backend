@@ -24,6 +24,7 @@ app.use('/api/tours', tourRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/company', companyRoutes);
 app.use('/api/gps', gpsRoutes);
+
 const pool = require('./db');
 pool.query(`CREATE TABLE IF NOT EXISTS trajets (
 id SERIAL PRIMARY KEY,
@@ -34,7 +35,6 @@ adresse_arrivee VARCHAR(255),
 date VARCHAR(255),
 status VARCHAR(50) DEFAULT 'en_attente'
 )`).then(() => console.log('Table trajets OK')).catch(e => console.log('Erreur table trajets:', e.message));
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

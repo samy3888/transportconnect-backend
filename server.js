@@ -34,7 +34,10 @@ adresse_depart VARCHAR(255),
 adresse_arrivee VARCHAR(255),
 date VARCHAR(255),
 status VARCHAR(50) DEFAULT 'en_attente'
-)`).then(() => console.log('Table trajets OK')).catch(e => console.log('Erreur table trajets:', e.message));
+)`).then(() => {
+console.log('Table trajets OK');
+return pool.query('ALTER TABLE trajets ADD COLUMN IF NOT EXISTS date VARCHAR(255)');
+}).then(() => console.log('Colonne date OK')).catch(e => console.log('Erreur:', e.message));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

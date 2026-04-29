@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const { WebSocketServer } = require('ws');
 require('dotenv').config();
 
 const app = express();
@@ -39,7 +40,6 @@ app.use('/api/gps', gpsRoutes);
 
 const pool = require('./db');
 
-// ✅ Colonnes automatiques
 pool.query(`ALTER TABLE trajets ADD COLUMN IF NOT EXISTS patient_token VARCHAR(50)`)
 .then(() => console.log('Colonne patient_token OK'))
 .catch(e => console.log('patient_token:', e.message));
@@ -48,7 +48,6 @@ pool.query(`ALTER TABLE societes ADD COLUMN IF NOT EXISTS actif BOOLEAN DEFAULT 
 .then(() => console.log('Colonne actif OK'))
 .catch(e => console.log('actif:', e.message));
 
-// ✅ Activer societe1 de test
 pool.query(`UPDATE societes SET actif = true WHERE email = 'societe1@test.fr'`)
 .then(() => console.log('societe1 activée'))
 .catch(e => console.log('update actif:', e.message));
@@ -94,9 +93,58 @@ res.status(500).json({ error: e.message });
 }
 });
 
+// ✅ GPS : stocker position chauffeur
+app.post('/api/gps/position', authenticateToken, async (req, res) => {
+const { lat, lng, trajet_id } = req.body;
+try {
+// Broadcaster la position à tous les clients WebSocket
+const message = JSON.stringify({
+type: 'position',
+chauffeur_id: req.user.id,
+trajet_id,
+lat,
+lng,
+timestamp: new Date().toISOString()
+});
+wss.clients.forEach(client => {
+if (client.readyState === 1) {
+client.send(message);
+}
+});
+res.json({ success: true });
+} catch (e) {
+res.status(500).json({ error: e.message });
+}
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
 console.log(`TransportConnect démarré port ${PORT}`);
+});
+
+// ✅ WebSocket Server
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+console.log('Client WebSocket connecté');
+
+ws.on('message', (message) => {
+try {
+const data = JSON.parse(message);
+// Broadcaster à tous les autres clients
+wss.clients.forEach(client => {
+if (client !== ws && client.readyState === 1) {
+client.send(JSON.stringify(data));
+}
+});
+} catch (e) {
+console.log('Erreur message WS:', e.message);
+}
+});
+
+ws.on('close', () => {
+console.log('Client WebSocket déconnecté');
+});
 });
 
 module.exports = app;

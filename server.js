@@ -5,7 +5,6 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ MIDDLEWARE AUTH
 function authenticateToken(req, res, next) {
 const authHeader = req.headers['authorization'];
 const token = authHeader && authHeader.split(' ')[1];
@@ -30,7 +29,7 @@ app.use('/api/tours', tourRoutes);
 
 const pool = require('./db');
 
-// ✅ COLONNES AUTOMATIQUES
+// ✅ MIGRATIONS AUTO
 const colonnes = [
 `ALTER TABLE trajets ADD COLUMN IF NOT EXISTS patient_token VARCHAR(50)`,
 `ALTER TABLE trajets ADD COLUMN IF NOT EXISTS societe_id INTEGER`,
@@ -49,6 +48,7 @@ const colonnes = [
 `ALTER TABLE societes ADD COLUMN IF NOT EXISTS description TEXT`,
 `ALTER TABLE societes ADD COLUMN IF NOT EXISTS nb_vehicules VARCHAR(20)`,
 `ALTER TABLE societes ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false`,
+`ALTER TABLE societes ADD COLUMN IF NOT EXISTS telephone VARCHAR(50)`,
 `ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS societe_id INTEGER`,
 `ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS prenom VARCHAR(255)`,
 `ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS telephone VARCHAR(50)`,
@@ -61,17 +61,7 @@ const colonnes = [
 `ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS nom_parent VARCHAR(255)`,
 `ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS tel_parent VARCHAR(50)`,
 `ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS numero_dossier VARCHAR(20)`,
-`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS mobilite VARCHAR(100)`,
-`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS accompagnant BOOLEAN DEFAULT false`,
-`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS urgent BOOLEAN DEFAULT false`,
-`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS commentaire TEXT`,
-
 ];
-
-colonnes.forEach(sql => {
-pool.query(sql).catch(e => console.log('Migration:', e.message));
-});
-
 
 colonnes.forEach(sql => {
 pool.query(sql).catch(e => console.log('Migration:', e.message));
@@ -82,8 +72,10 @@ pool.query(`UPDATE societes SET actif = true, is_admin = true WHERE email = 'soc
 .then(() => console.log('societe1 activée admin'))
 .catch(e => console.log(e.message));
 
-// ✅ TABLE DEMANDES
-pool.query(`CREATE TABLE IF NOT EXISTS demandes (
+// ✅ SUPPRIMER ET RECRÉER TABLE DEMANDES
+pool.query(`DROP TABLE IF EXISTS demandes`)
+.then(() => {
+pool.query(`CREATE TABLE demandes (
 id SERIAL PRIMARY KEY,
 patient_id INTEGER,
 societe_id INTEGER,
@@ -101,7 +93,8 @@ accompagnant BOOLEAN DEFAULT false,
 urgent BOOLEAN DEFAULT false,
 commentaire TEXT,
 created_at TIMESTAMP DEFAULT NOW()
-)`).then(() => console.log('Table demandes OK')).catch(e => console.log(e.message));
+)`).then(() => console.log('Table demandes recréée OK')).catch(e => console.log(e.message));
+}).catch(e => console.log(e.message));
 
 // ✅ TABLE PATIENTS COMPTES
 pool.query(`CREATE TABLE IF NOT EXISTS patients_comptes (
@@ -124,15 +117,10 @@ numero_dossier VARCHAR(20),
 created_at TIMESTAMP DEFAULT NOW()
 )`).then(() => console.log('Table patients_comptes OK')).catch(e => console.log(e.message));
 
-// ✅ NUMÉRO DOSSIER UNIQUE
-pool.query(`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS numero_dossier VARCHAR(20)`)
-.catch(e => console.log(e.message));
-
 // ===========================
 // ROUTES TRAJETS
 // ===========================
 
-// GET tous les trajets de la société
 app.get('/api/tours', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query(
@@ -143,7 +131,6 @@ res.json(result.rows);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET trajets du chauffeur
 app.get('/api/tours/chauffeur', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query(
@@ -154,7 +141,6 @@ res.json(result.rows);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST créer un trajet
 app.post('/api/tours', authenticateToken, async (req, res) => {
 const { chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, type_transport, mobilite, accompagnant, urgent, commentaire, patient_telephone } = req.body;
 try {
@@ -162,13 +148,12 @@ const patient_token = Math.random().toString(36).substring(2, 10).toUpperCase();
 const result = await pool.query(
 `INSERT INTO trajets (chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, status, patient_token, societe_id, type_transport, mobilite, accompagnant, urgent, commentaire, patient_telephone)
 VALUES ($1, $2, $3, $4, $5, 'en_attente', $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-[chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, patient_token, req.user.societe_id || req.user.id, type_transport, mobilite, accompagnant, urgent, commentaire, patient_telephone]
+[chauffeur_id, patient_id, adresse_depart, arrivee, date, patient_token, req.user.societe_id || req.user.id, type_transport, mobilite, accompagnant, urgent, commentaire, patient_telephone]
 );
 res.json({ success: true, patient_token, tour: result.rows[0] });
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT modifier un trajet
 app.put('/api/tours/:id', authenticateToken, async (req, res) => {
 const { chauffeur_id, patient_id, adresse_depart, adresse_arrivee, date, urgent, commentaire } = req.body;
 try {
@@ -180,7 +165,6 @@ res.json({ success: true });
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT status trajet
 app.put('/api/tours/:id/status', authenticateToken, async (req, res) => {
 const { status } = req.body;
 try {
@@ -189,7 +173,6 @@ res.json({ success: true });
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT refuser mission
 app.put('/api/tours/:id/refuser', authenticateToken, async (req, res) => {
 const { motif } = req.body;
 try {
@@ -198,7 +181,6 @@ res.json({ success: true });
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// DELETE trajet
 app.delete('/api/tours/:id', authenticateToken, async (req, res) => {
 try {
 await pool.query('DELETE FROM trajets WHERE id=$1', [req.params.id]);
@@ -210,7 +192,6 @@ res.json({ success: true });
 // ROUTES DEMANDES
 // ===========================
 
-// GET demandes pour une société
 app.get('/api/demandes', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query(
@@ -221,7 +202,6 @@ res.json(result.rows);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET demandes pour un patient
 app.get('/api/demandes/patient', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query(
@@ -236,7 +216,6 @@ res.json(result.rows);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST créer une demande
 app.post('/api/demandes', authenticateToken, async (req, res) => {
 const { societe_id, adresse_depart, adresse_arrivee, date, patient_nom, patient_telephone, type_transport, mobilite, accompagnant, urgent, commentaire } = req.body;
 try {
@@ -251,7 +230,6 @@ res.json(result.rows[0]);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT répondre à une demande
 app.put('/api/demandes/:id/repondre', authenticateToken, async (req, res) => {
 const { statut } = req.body;
 try {
@@ -272,7 +250,6 @@ res.json({ success: true });
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT annuler une demande
 app.put('/api/demandes/:id/annuler', authenticateToken, async (req, res) => {
 try {
 await pool.query('UPDATE demandes SET statut = $1 WHERE id = $2 AND patient_id = $3', ['annule', req.params.id, req.user.id]);
@@ -284,7 +261,6 @@ res.json({ success: true });
 // ROUTES SOCIÉTÉS
 // ===========================
 
-// GET liste sociétés pour passagers
 app.get('/api/societes', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query(
@@ -321,7 +297,6 @@ res.json({ success: true });
 // ROUTES ADMIN
 // ===========================
 
-// GET toutes les sociétés (admin)
 app.get('/api/admin/societes', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query('SELECT * FROM societes ORDER BY created_at DESC');
@@ -329,7 +304,6 @@ res.json(result.rows);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET tous les passagers (admin)
 app.get('/api/admin/passagers', authenticateToken, async (req, res) => {
 try {
 const result = await pool.query('SELECT id, nom, prenom, email, telephone, ville, created_at FROM patients_comptes ORDER BY created_at DESC');
@@ -337,7 +311,6 @@ res.json(result.rows);
 } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT activer/désactiver société (admin)
 app.put('/api/admin/societes/:id/toggle', authenticateToken, async (req, res) => {
 const { actif } = req.body;
 try {

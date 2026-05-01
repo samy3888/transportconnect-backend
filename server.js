@@ -31,7 +31,7 @@ app.use('/api/tours', tourRoutes);
 const pool = require('./db');
 
 // ✅ COLONNES AUTOMATIQUES
-const migrations = [
+const colonnes = [
 `ALTER TABLE trajets ADD COLUMN IF NOT EXISTS patient_token VARCHAR(50)`,
 `ALTER TABLE trajets ADD COLUMN IF NOT EXISTS societe_id INTEGER`,
 `ALTER TABLE trajets ADD COLUMN IF NOT EXISTS type_transport VARCHAR(100)`,

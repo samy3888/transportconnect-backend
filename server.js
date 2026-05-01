@@ -61,6 +61,11 @@ const colonnes = [
 `ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS nom_parent VARCHAR(255)`,
 `ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS tel_parent VARCHAR(50)`,
 `ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS numero_dossier VARCHAR(20)`,
+`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS mobilite VARCHAR(100)`,
+`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS accompagnant BOOLEAN DEFAULT false`,
+`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS urgent BOOLEAN DEFAULT false`,
+`ALTER TABLE demandes ADD COLUMN IF NOT EXISTS commentaire TEXT`,
+
 ];
 
 colonnes.forEach(sql => {

@@ -53,7 +53,20 @@ const migrations = [
 `ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS prenom VARCHAR(255)`,
 `ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS telephone VARCHAR(50)`,
 `ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS disponible BOOLEAN DEFAULT true`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS code_postal VARCHAR(20)`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS date_naissance VARCHAR(50)`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS contact_urgence VARCHAR(255)`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS tel_urgence VARCHAR(50)`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS is_mineur BOOLEAN DEFAULT false`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS nom_parent VARCHAR(255)`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS tel_parent VARCHAR(50)`,
+`ALTER TABLE patients_comptes ADD COLUMN IF NOT EXISTS numero_dossier VARCHAR(20)`,
 ];
+
+colonnes.forEach(sql => {
+pool.query(sql).catch(e => console.log('Migration:', e.message));
+});
+
 
 migrations.forEach(sql => {
 pool.query(sql).catch(e => console.log('Migration:', e.message));

@@ -68,7 +68,7 @@ pool.query(sql).catch(e => console.log('Migration:', e.message));
 });
 
 
-migrations.forEach(sql => {
+colonnes.forEach(sql => {
 pool.query(sql).catch(e => console.log('Migration:', e.message));
 });
 

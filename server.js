@@ -120,6 +120,72 @@ tel_urgence VARCHAR(50), is_mineur BOOLEAN DEFAULT false,
 nom_parent VARCHAR(255), tel_parent VARCHAR(50),
 numero_dossier VARCHAR(20), created_at TIMESTAMP DEFAULT NOW()
 )`).then(() => console.log('Table patients_comptes OK')).catch(e => console.log(e.message));
+// ============================================================
+// TABLE MESSAGES
+// ============================================================
+pool.query(`CREATE TABLE IF NOT EXISTS messages (
+id SERIAL PRIMARY KEY,
+expediteur_id INTEGER NOT NULL,
+expediteur_role VARCHAR(50) NOT NULL,
+expediteur_nom VARCHAR(255),
+destinataire_id INTEGER,
+destinataire_role VARCHAR(50),
+contenu TEXT NOT NULL,
+conversation_id VARCHAR(100),
+lu BOOLEAN DEFAULT false,
+created_at TIMESTAMP DEFAULT NOW()
+)`).then(() => console.log('Table messages OK')).catch(e => console.log(e.message));
+
+// ============================================================
+// ROUTES MESSAGES / CHAT
+// ============================================================
+
+app.post('/api/messages', authenticateToken, async (req, res) => {
+const { destinataire_id, destinataire_role, contenu, conversation_id, expediteur_nom } = req.body;
+try {
+const result = await pool.query(
+`INSERT INTO messages (expediteur_id, expediteur_role, expediteur_nom, destinataire_id, destinataire_role, contenu, conversation_id)
+VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+[req.user.id, req.user.role, expediteur_nom, destinataire_id, destinataire_role, contenu, conversation_id]
+);
+const message = JSON.stringify({ type: 'message', data: result.rows[0] });
+wss.clients.forEach(client => { if (client.readyState === 1) client.send(message); });
+res.json(result.rows[0]);
+} catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/messages/:conversation_id', authenticateToken, async (req, res) => {
+try {
+const result = await pool.query(
+'SELECT * FROM messages WHERE conversation_id=$1 ORDER BY created_at ASC',
+[req.params.conversation_id]
+);
+res.json(result.rows);
+} catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/conversations', authenticateToken, async (req, res) => {
+try {
+const result = await pool.query(
+`SELECT DISTINCT ON (conversation_id) * FROM messages
+WHERE expediteur_id=$1 OR destinataire_id=$1
+ORDER BY conversation_id, created_at DESC`,
+[req.user.id]
+);
+res.json(result.rows);
+} catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/messages/:conversation_id/lu', authenticateToken, async (req, res) => {
+try {
+await pool.query(
+'UPDATE messages SET lu=true WHERE conversation_id=$1 AND destinataire_id=$2',
+[req.params.conversation_id, req.user.id]
+);
+res.json({ success: true });
+} catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 
 // ============================================================
 // ROUTES TRAJETS
